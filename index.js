@@ -29,6 +29,25 @@ const getPage = async (path) => {
   }
 };
 
+const getPages = async (paths) => {
+  // Don't parse a link we already parsed as a descendent of another page
+  const pathsToCrawl = [];
+  for (const path of paths)
+    if (!crawledLinks.includes(path)) pathsToCrawl.push(path);
+  // Track link
+  crawledLinks.push(...pathsToCrawl);
+
+  try {
+    const axiosRequests = [];
+    for (const path of pathsToCrawl)
+      axiosRequests.push(axios.get(`${host}${path}`).catch((err) => null));
+    const responses = await axios.all(axiosRequests);
+    return responses;
+  } catch (error) {
+    //console.error(error);
+  }
+};
+
 const findSearchTerm = (soup, path) => {
   const text = soup.text;
   if (text.indexOf(searchTerm) > -1) {
@@ -54,21 +73,24 @@ const parseLinks = (soup) => {
   return filteredLinks;
 };
 
-const search = async (path, currentDepth) => {
+const search = async (paths, currentDepth) => {
   if (currentDepth > depth) return;
 
-  const html = await getPage(path); //.then((html) => {
-  if (!html) return;
-  const soup = new JSSoup(html);
-  findSearchTerm(soup, path);
-  const links = parseLinks(soup);
-  for (const link of links) {
-    await search(link, currentDepth + 1);
+  const htmls = await getPages(paths);
+  if (!htmls) return;
+
+  for (const html of htmls) {
+    if (!html) continue;
+
+    const soup = new JSSoup(html.data);
+    findSearchTerm(soup, html.request.path);
+    const links = parseLinks(soup);
+    await search(links, currentDepth + 1);
   }
 };
 
 // Start with root path
-search("/", 0).then((data) => {
+search(["/"], 0).then((data) => {
   console.log(
     `Crawled ${crawledLinks.length} pages and found search term '${termLinks.length}' times on the following pages:`
   );
