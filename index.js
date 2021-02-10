@@ -2,12 +2,11 @@ const JSSoup = require("jssoup").default;
 const axios = require("axios");
 
 const args = process.argv.slice(2);
-// FIXME - kill hard coded values
-const host = args[0] || "https://www.apple.com";
-const searchTerm = args[1] || "card";
+const host = args[0];
+const searchTerm = args[1];
 const crawledLinks = [];
 const termLinks = [];
-const depth = 2;
+const depth = args[2] || 2;
 
 // Get some inputs
 if (!host || !searchTerm) {
@@ -56,7 +55,7 @@ const parseLinks = (soup) => {
 };
 
 const search = async (path, currentDepth) => {
-  if (currentDepth >= depth) return;
+  if (currentDepth > depth) return;
 
   const html = await getPage(path); //.then((html) => {
   if (!html) return;
